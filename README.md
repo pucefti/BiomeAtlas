@@ -1,6 +1,6 @@
 # BiomeAtlas
 
-A Forge mod for 1.7.10 that generates a map of biomes via command or on startup.
+A Forge mod for 1.10.2 that generates a map of biomes via command or on startup.
 
 * Supports mod-added biomes.
 * Great for finding that perfect seed.
@@ -15,9 +15,9 @@ A Forge mod for 1.7.10 that generates a map of biomes via command or on startup.
 
     /biomeatlas <apothem> [<resolution>]
     
-Apothem is the "radius" of a square around you in chunks (not blocks). Each chunk is a 16x16 area of blocks.
+Apothem is the "radius" of a square around you in blocks.
 
-Resolution is an optional parameter that lets you generate larger areas in shorter amounts of time by skipping 1 in X chunks. Specifically, it is the number of distinct chunks represented per pixel in one dimension. The default value is 1, which means that each chunk gets its own pixel in the map. A value of 2 will halve the size of the map and so on. Higher values allow you to map larger areas without increasing the amount of time it takes to generate the map.
+Resolution is an optional parameter that lets you generate larger areas in shorter amounts of time by skipping 1 in X blocks. Specifically, it is the number of distinct blocks represented per pixel in one dimension. The default value is 16 (a chunk), which means that each 16 blocks (one chunk) gets its own pixel in the map. A value of 1 will represent one block per pixel. Higher values allow you to map larger areas without increasing the amount of time it takes to generate the map.
 
 ### Generate on Start
 
@@ -35,7 +35,7 @@ You can also define the following properties:
 	-DbiomeAtlas.mapDimension=0
 	-DbiomeAtlas.centerX=0
 	-DbiomeAtlas.centerZ=0
-	-DbiomeAtlas.resolution=1
+	-DbiomeAtlas.resolution=16
 	-DbiomeAtlas.exitOnFinish=false
 
 ### Finding a Seed

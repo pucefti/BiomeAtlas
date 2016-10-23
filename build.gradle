@@ -1,50 +1,31 @@
 buildscript {
     repositories {
-        mavenCentral()
-        maven { url = "http://files.minecraftforge.net/maven" }
-        maven { url = "https://oss.sonatype.org/content/repositories/snapshots/" }
         jcenter()
+        maven { url = "http://files.minecraftforge.net/maven" }
     }
-
     dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:1.2-SNAPSHOT'
+        classpath 'net.minecraftforge.gradle:ForgeGradle:2.2-SNAPSHOT'
     }
 }
 
-apply plugin: 'java'
-apply plugin: 'maven'
-apply plugin: 'forge'
+apply plugin: 'net.minecraftforge.gradle.forge'
 
-version = "1.0.0"
+version = "1.10.2-1.2.0-pre1"
 group = "com.sk89q.biomeatlas"
 archivesBaseName = "BiomeAtlas"
 
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
-
-repositories {
-    mavenCentral()
-    maven { url "http://repo.maven.apache.org/maven2" }
-    maven { url "http://maven.sk89q.com/repo/" }
+sourceCompatibility = targetCompatibility = "1.6" // Need this here so eclipse task generates correctly.
+compileJava {
+    sourceCompatibility = targetCompatibility = "1.6"
 }
 
 minecraft {
-    ext.forgeVersion = "10.13.4.1492-1.7.10"
-    version = "1.7.10-$forgeVersion"
+    version = "1.10.2-12.18.2.2099"
+    runDir = "run"
+    mappings = "snapshot_20160518"
 
     replaceIn "com/sk89q/biomeatlas/BiomeAtlas.java"
     replace "%VERSION%", project.version
-}
-
-processResources {
-    from (sourceSets.main.resources.srcDirs) {
-        expand 'version': project.version, 'mcversion': project.minecraft.version, 'forgeVersion': project.minecraft.forgeVersion
-        include 'mcmod.info'
-    }
-
-    from (sourceSets.main.resources.srcDirs) {
-        exclude 'mcmod.info'
-    }
 }
 
 if (JavaVersion.current().isJava8Compatible()) {
