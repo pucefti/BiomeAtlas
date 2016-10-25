@@ -51,7 +51,7 @@ public class BiomeAtlas
 				mapper.setResolution(resolution);
 				mapper.setMessageRate(2000);
 				mapper.getListeners().add(new LoggerObserver());
-				mapper.generate(world, centerX, centerZ, apothem, new File("biomeatlas_" + world.getSeed() + ".png"));
+				mapper.generate(world, centerX, centerZ, apothem, new File("biomeatlas_" + world.getSeed() + ".html"));
 
 				if (System.getProperty("biomeAtlas.exitOnFinish", "false").equals("true"))
 				{

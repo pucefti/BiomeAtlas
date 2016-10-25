@@ -1,7 +1,10 @@
 buildscript {
     repositories {
         jcenter()
-        maven { url = "http://files.minecraftforge.net/maven" }
+        maven {
+            name = "forge"
+            url = "http://files.minecraftforge.net/maven"
+        }
     }
     dependencies {
         classpath 'net.minecraftforge.gradle:ForgeGradle:2.2-SNAPSHOT'
@@ -9,63 +12,57 @@ buildscript {
 }
 
 apply plugin: 'net.minecraftforge.gradle.forge'
+apply plugin: 'maven'
 
-version = "1.10.2-1.2.0-pre1"
+// define the properties file
+ext.configFile = file "build.properties"
+
+configFile.withReader {
+    // read config.  it shall from now on be referenced as simply config or as project.config
+    def prop = new Properties()
+    prop.load(it)
+    project.ext.config = new ConfigSlurper().parse prop
+}
+
 group = "com.sk89q.biomeatlas"
+version = config.mod_version
 archivesBaseName = "BiomeAtlas"
 
-sourceCompatibility = targetCompatibility = "1.6" // Need this here so eclipse task generates correctly.
-compileJava {
-    sourceCompatibility = targetCompatibility = "1.6"
-}
+// add some stuff to the version
+version = "${config.minecraft_version}-${config.mod_version}"
 
 minecraft {
-    version = "1.10.2-12.18.2.2099"
+    version = config.minecraft_version + "-" + config.forge_version // grab latest forge
+    useDepAts = true
+    mappings = project.config.mappings_version
+    //gradle complains if this isn't set when setting up/using IDEA workspace
     runDir = "run"
-    mappings = "snapshot_20160518"
-
-    replaceIn "com/sk89q/biomeatlas/BiomeAtlas.java"
-    replace "%VERSION%", project.version
+    //set a full version string with appended build number to be used in mod registration
+    def buildnum = (config.build_number!="") ? '.' + config.build_number : ""
+    replace '@MOD_VERSION@', config.mod_version + buildnum
+    replaceIn 'com/sk89q/biomeatlas/BiomeAtlas.java'
 }
 
-if (JavaVersion.current().isJava8Compatible()) {
-    // Java 8 turns on doclint which we fail
-    tasks.withType(Javadoc) {
-        options.addStringOption('Xdoclint:none', '-quiet')
-    }
-}
-
-task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-}
-
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-}
-
-artifacts {
-    archives jar
-    archives sourcesJar
-    archives javadocJar
+jar {
+    classifier = 'universal'
 }
 
 processResources {
-    // this will ensure that this task is redone when the versions change.
-    inputs.property "version", project.version
-    inputs.property "mcversion", project.minecraft.version
-
-    // replace stuff in mcmod.info, nothing else
     from(sourceSets.main.resources.srcDirs) {
-        include 'mcmod.info'
+        include '**/*.info'
+        include '**/*.properties'
 
-        // replace version and mcversion
-        expand 'version':project.version, 'mcversion':project.minecraft.version
+        // replaces
+        expand ([
+                'modid': project.archivesBaseName,
+                'mod_version': project.config.mod_version,
+                'minecraft_version': project.config.minecraft_version,
+                'build_number': project.config.build_number
+        ])
     }
 
-    // copy everything else, thats not the mcmod.info
     from(sourceSets.main.resources.srcDirs) {
-        exclude 'mcmod.info'
+        exclude '**/*.info'
+        exclude '**/*.properties'
     }
 }

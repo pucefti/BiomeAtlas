@@ -2,16 +2,14 @@
   {
     "modid": "biomeatlas",
     "name": "BiomeAtlas",
-    "description": "Biome visualization.",
-    "version": "${version}",
-    "mcversion": "${mcversion}",
+    "description": "Biome mapping and visualization.",
+    "version": "${mod_version}",
+    "mcversion": "${minecraft_version}",
     "logoFile": "",
-    "url": "",
-    "updateUrl": "",
+    "url": "https://github.com/pucefti/BiomeAtlas",
     "authorList": ["sk89q", "Pucefti"],
     "credits": "sk89q, Pucefti",
     "parent": "",
-    "screenshots": [],
-    "dependencies": []
+    "dependencies": ["jfreesvg-3.2"]
   }
 ]
