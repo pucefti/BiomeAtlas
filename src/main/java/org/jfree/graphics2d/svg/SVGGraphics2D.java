@@ -2727,22 +2727,26 @@ public final class SVGGraphics2D extends Graphics2D {
         }
         svg.append("text-rendering=\"").append(this.textRendering)
            .append("\" shape-rendering=\"").append(this.shapeRendering)
-           .append("\">\n");
+           .append("\">");
         StringBuilder defs = new StringBuilder("<defs>");
+        boolean defExist = false;
         for (GradientPaintKey key : this.gradientPaints.keySet()) {
             defs.append(getLinearGradientElement(this.gradientPaints.get(key), 
                     key.getPaint()));
             defs.append("\n");
+            defExist = true;
         }
         for (LinearGradientPaintKey key : this.linearGradientPaints.keySet()) {
             defs.append(getLinearGradientElement(
                     this.linearGradientPaints.get(key), key.getPaint()));
-            defs.append("\n");            
+            defs.append("\n");
+            defExist = true;
         }
         for (RadialGradientPaintKey key : this.radialGradientPaints.keySet()) {
             defs.append(getRadialGradientElement(
                     this.radialGradientPaints.get(key), key.getPaint()));
             defs.append("\n");
+            defExist = true;
         }
         for (int i = 0; i < this.clipPaths.size(); i++) {
             StringBuilder b = new StringBuilder("<clipPath id=\"")
@@ -2751,9 +2755,14 @@ public final class SVGGraphics2D extends Graphics2D {
             b.append("<path ").append(this.clipPaths.get(i)).append("/>");
             b.append("</clipPath>").append("\n");
             defs.append(b.toString());
+            defExist = true;
         }
-        defs.append("</defs>\n");
-        svg.append(defs);
+        defs.append("</defs>");
+
+        if(defExist)
+        {
+            svg.append(defs);
+        }
         svg.append(this.sb);
         svg.append("</svg>");        
         return svg.toString();

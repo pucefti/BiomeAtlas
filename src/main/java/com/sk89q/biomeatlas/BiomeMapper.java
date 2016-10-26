@@ -3,11 +3,15 @@ package com.sk89q.biomeatlas;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeProvider;
+import net.minecraft.world.chunk.IChunkProvider;
+import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.BiomeDictionary.Type;
+import net.minecraftforge.fml.common.FMLCommonHandler;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.logging.log4j.LogManager;
@@ -81,34 +85,160 @@ public class BiomeMapper
 
 		//BufferedImage mapImage = new BufferedImage(mapImageLength, mapImageLength, BufferedImage.TYPE_INT_RGB);
 		SVGGraphics2D g2 = new SVGGraphics2D(mapImageLength, mapImageLength);
-		Set<Biome> seenBiomes = Sets.newHashSet();
 
-		Map<Biome, List<Point>> mapBiomes = new HashMap<Biome, List<Point>>();
+		Map<Biome, Area> mapBiomes = new TreeMap<Biome, Area>(new Comparator<Biome>()
+		{
+			public int compare(Biome biome1, Biome biome2)
+			{
+				if(biome1 == biome2)
+				{
+					return 0;
+				}
+				else if(biome1 == null)
+				{
+					return -1;
+				}
+				else if(biome2 == null)
+				{
+					return 1;
+				}
+
+				return biome1.getBiomeName().compareTo(biome2.getBiomeName());
+			}
+		});
 
 		// Progress tracking
 		int blockCount = mapImageLength * mapImageLength;
 		int completedBlocks = 0;
 		long lastMessageTime = System.currentTimeMillis();
 
+		String header = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n" +
+				"<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"fr\" lang=\"fr\">\n" +
+				"\t<head>\n" +
+				"\t<title>" + world.getSeed() + "</title>\n" +
+				"\t</head>\n" +
+				"\t<style>" +
+				"path:hover { fill-opacity: 0.7; stroke: black; stroke-opacity: 1.0; stroke-width: 1px; } " +
+				"#map, #infobar { padding: 0; margin: 0; } " +
+				"#main { display:table; margin:auto; } " +
+				"#map  { display:table-cell; width:800px; background-color:#FFFFFF; } " +
+				"#infobar { display:table-cell; vertical-align:top; padding-left: 10px; width:300px; background-color:#FFFFFF; } " +
+				"#infomap { border:3px ridge black; box-shadow: 4px 4px 0px gray; padding: 5px; margin-bottom: 10px; } " +
+				"#infobiome { border:3px ridge black; box-shadow: 4px 4px 0px gray; padding: 5px; } " +
+				".biometext { padding: 2px 7px 2px 0; margin: 0; white-space: nowrap; } a { text-decoration: none; color: #000000; } a:hover { color: #FF0000; }" +
+				"</style>\n" +
+				"\t<script>" +
+				"var colorOld; " +
+				"function cursorPoint(evt) { pt.x = evt.clientX; pt.y = evt.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); } " +
+				"function displayName(name) { document.getElementById('biome_name').innerHTML = name; } " +
+				"function highlightBiome(id) { svg.getElementById(id).style.stroke = \"1px\"; colorOld = svg.getElementById(id).style.fill; svg.getElementById(id).style.fill = \"#FF0000\"; } " +
+				"function highlightBiomeOff(id) { svg.getElementById(id).style.stroke = \"none\"; svg.getElementById(id).style.fill = colorOld; }" +
+				"</script>\n" +
+				"\t<body>\n\t\t<div id=\"main\">\n\t\t\t<div id=\"map\">";
+
+		String biomeList = "</div>\n\t\t\t<div id=\"infobar\">\n\t\t\t\t<div id=\"infomap\">Biome: <span id='biome_name'>&nbsp;</span><br/>Coordonn&eacute;e: <span id='biome_coord'>&nbsp;</span></div>\n\t\t\t\t<div id=\"infobiome\">\n";
+
+		String footer = "\t\t\t\t</div>\n\t\t\t</div>\n\t\t</div>\n\t\t<script>var svg  = document.getElementById(\"biomeatlas\"); var pt   = svg.createSVGPoint(); " +
+				"svg.addEventListener('mousemove',function(evt){ var loc = cursorPoint(evt); document.getElementById('biome_coord').innerHTML = \"x: \"+ ((Math.ceil(loc.x) * " + resolution + ") + (" + minBlockX + ")) + \" y:\" + ((Math.ceil(loc.y) * " + resolution + ") + (" + minBlockZ + ")); },false);" +
+				"</script>\t\n</body>\n</html>\n";
+
 		sendStatus("Generating map at (" + centerX + ", " + centerZ + ") spanning " + worldLength + ", " + worldLength + " at " + resolution + "x...");
 
 		try
 		{
+			/*ChunkProviderServer cps = FMLCommonHandler.instance().getMinecraftServerInstance().worldServerForDimension(0).getChunkProvider();
+
+			long startTime = System.currentTimeMillis();
 			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
 			{
 				for (int blockZ = minBlockZ; blockZ < maxBlockZ; blockZ += resolution)
 				{
-					Point p = new Point(blockX, blockZ);
+					int chunkX = blockX >> 4;
+					int chunkZ = blockZ >> 4;
+					if(!cps.chunkExists(chunkX, chunkZ))
+					{
+						cps.loadChunk(chunkX, chunkZ);
+					}
+
+					BlockPos pos = new BlockPos(blockX, 50, blockZ);
+					Biome biome = chunkManager.getBiomeGenerator(pos);
+				}
+			}
+			sendStatus("getBiome: " + (System.currentTimeMillis() - startTime) + " ms");
+
+			startTime = System.currentTimeMillis();
+			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
+			{
+				for (int blockZ = minBlockZ; blockZ < maxBlockZ; blockZ += resolution)
+				{
 					Biome biome = chunkManager.getBiomesForGeneration(null, blockX, blockZ, 1, 1)[0];
+				}
+			}
+			sendStatus("getBiomesForGeneration: " + (System.currentTimeMillis() - startTime) + " ms");
+
+			startTime = System.currentTimeMillis();
+			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
+			{
+				for (int blockZ = minBlockZ; blockZ < maxBlockZ; blockZ += resolution)
+				{
+					Biome biome = chunkManager.getBiomeGenAt(null, blockX, blockZ, 1, 1, false)[0];
+				}
+			}
+			sendStatus("getBiomeGenAt: " + (System.currentTimeMillis() - startTime) + " ms");
+
+			startTime = System.currentTimeMillis();
+			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
+			{
+				for (int blockZ = minBlockZ; blockZ < maxBlockZ; blockZ += resolution)
+				{
+					Biome biome = world.getBiomeGenForCoords(new BlockPos(blockX, 50, blockZ));
+				}
+			}
+			sendStatus("getBiomeGenForCoords: " + (System.currentTimeMillis() - startTime) + " ms");
+
+			startTime = System.currentTimeMillis();
+			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
+			{
+				for (int blockZ = minBlockZ; blockZ < maxBlockZ; blockZ += resolution)
+				{
+					BlockPos pos = new BlockPos(blockX, 50, blockZ);
+					Biome biome = chunkManager.getBiomeGenerator(pos);
+				}
+			}
+			sendStatus("getBiome: " + (System.currentTimeMillis() - startTime) + " ms");*/
+
+
+
+			StringBuilder sbBiome = new StringBuilder();
+			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
+			{
+				for (int blockZ = minBlockZ; blockZ < maxBlockZ; blockZ += resolution)
+				{
+					Biome biome = chunkManager.getBiomesForGeneration(null, blockX, blockZ, 1, 1)[0];
+					//Biome biome = world.getBiomeGenForCoords(new BlockPos(blockX, 50, blockZ));
+					//BlockPos pos = new BlockPos(blockX, 50, blockZ);
+					//Biome biome = chunkManager.getBiomeGenerator(pos);
+
+					int x = (blockX - minBlockX) / resolution;
+					int y = (blockZ - minBlockZ) / resolution;
+					Rectangle rect = new Rectangle(x, y, 1, 1);
 
 					if(mapBiomes.containsKey(biome))
 					{
-						mapBiomes.get(biome).add(p);
+						mapBiomes.get(biome).add(new Area(rect));
 					}
 					else
 					{
-						List<Point> ar = new ArrayList<Point>();
-						ar.add(p);
+						sbBiome.append("\t\t\t\t\t<span class=\"biometext\">|&nbsp;<a href=\"#\" onmouseover=\"highlightBiome('");
+						sbBiome.append(biome.getRegistryName().toString());
+						sbBiome.append("')\" onmouseout=\"highlightBiomeOff('");
+						sbBiome.append(biome.getRegistryName().toString());
+						sbBiome.append("')\">");
+						sbBiome.append(biome.getBiomeName());
+						sbBiome.append("</a>&nbsp;|</span>\n");
+
+						Area ar = new Area();
+						ar.add(new Area(rect));
 
 						mapBiomes.put(biome, ar);
 					}
@@ -126,62 +256,13 @@ public class BiomeMapper
 
 			sendStatus("Creating output image...");
 
-			String header = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">" +
-					"<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"fr\" lang=\"fr\">" +
-					"<head>" +
-					"<title>" + world.getSeed() + "</title>" +
-					"</head>" +
-					"<style>" +
-					"path:hover { fill-opacity: 0.7; stroke: black; stroke-opacity: 1.0; stroke-width: 1px; } " +
-					"#map, #infobar { padding: 0; margin: 0; } " +
-					"#main { display:table; margin:auto; } " +
-					"#map  { display:table-cell; width:800px; background-color:#FFFFFF; } " +
-					"#infobar { display:table-cell; vertical-align:top; padding-left: 10px; width:300px; background-color:#FFFFFF; } " +
-					"#infomap { border:3px ridge black; box-shadow: 4px 4px 0px gray; padding: 5px; margin-bottom: 10px; } " +
-					"#infobiome { border:3px ridge black; box-shadow: 4px 4px 0px gray; padding: 5px; } " +
-					".biometext { padding: 2px 7px 2px 0; margin: 0; } a { text-decoration: none; color: #000000; } a:hover { color: #FF0000; }" +
-					"</style>" +
-					"<script>" +
-					"var colorOld; " +
-					"function cursorPoint(evt) { pt.x = evt.clientX; pt.y = evt.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); } " +
-					"function displayName(name) { document.getElementById('biome_name').innerHTML = name; } " +
-					"function highlightBiome(id) { svg.getElementById(id).style.stroke = \"1px\"; colorOld = svg.getElementById(id).style.fill; svg.getElementById(id).style.fill = \"#FF0000\"; } " +
-					"function highlightBiomeOff(id) { svg.getElementById(id).style.stroke = \"none\"; svg.getElementById(id).style.fill = colorOld; }" +
-					"</script>" +
-					"<body><div id=\"main\"><div id=\"map\">";
-
-			String biomeList = "</div><div id=\"infobar\"><div id=\"infomap\">Biome: <span id='biome_name'></span><br/>Coordonn&eacute;e: <span id='biome_coord'></span></div><div id=\"infobiome\">";
-
-			String footer = "</div></div></div><script>var svg  = document.getElementById(\"biomeatlas\"); var pt   = svg.createSVGPoint(); " +
-					"svg.addEventListener('mousemove',function(evt){ var loc = cursorPoint(evt); document.getElementById('biome_coord').innerHTML = \"x: \"+ ((Math.ceil(loc.x) * " + resolution + ") + (" + minBlockX + ")) + \" y:\" + ((Math.ceil(loc.y) * " + resolution + ") + (" + minBlockZ + ")); },false);" +
-					"</script></body></html>";
-
-			StringBuilder sbBiome = new StringBuilder();
 			for (Biome b : mapBiomes.keySet())
 			{
-				Area area = new Area();
+				//Area area = new Area();
 				g2.setPaint(new Color(getBiomeRGB(b)));
-
-				for (Point pt : mapBiomes.get(b))
-				{
-					int x = ((int)pt.getX() - minBlockX) / resolution;
-					int y = ((int)pt.getY() - minBlockZ) / resolution;
-
-					Rectangle rect = new Rectangle(x, y, 1, 1);
-					area.add(new Area(rect));
-				}
-
-				sbBiome.append("<span class=\"biometext\">|&nbsp;<a href=\"#\" onmouseover=\"highlightBiome('");
-				sbBiome.append(b.getRegistryName().toString());
-				sbBiome.append("')\" onmouseout=\"highlightBiomeOff('");
-				sbBiome.append(b.getRegistryName().toString());
-				sbBiome.append("')\">");
-				sbBiome.append(b.getBiomeName());
-				sbBiome.append("</a>&nbsp;|</span>");
-
 				g2.setRenderingHint(SVGHints.KEY_ELEMENT_ID, b.getRegistryName().toString());
 				g2.setRenderingHint(SVGHints.KEY_ELEMENT_CUSTOM, "onmouseover=\"displayName('" + StringEscapeUtils.escapeHtml3(b.getBiomeName()) + "')\"");
-				g2.fill(area);
+				g2.fill(mapBiomes.get(b));
 			}
 
 			StringBuilder sb = new StringBuilder();
@@ -203,49 +284,6 @@ public class BiomeMapper
 		{
 			g2.dispose();
 		}
-
-
-
-		/*int legendHeight = seenBiomes.size() * lineHeight;
-		int outputWidth = mapImage.getWidth() + legendLabelSpacing;
-		int outputHeight = Math.max(mapImage.getHeight(), legendHeight + lineHeight + statsLegendSpacing);
-
-		BufferedImage outputImage = new BufferedImage(outputWidth, outputHeight, BufferedImage.TYPE_INT_RGB);
-		Graphics2D g2d = (Graphics2D) outputImage.getGraphics();
-
-		try
-		{
-			// Background
-			g2d.setColor(Color.WHITE);
-			g2d.fill(new Rectangle(0, 0, outputImage.getWidth(), outputImage.getHeight()));
-
-			// Copy image to output image
-			g2d.drawImage(mapImage, 0, 0, null);
-
-			// Paint size
-			g2d.setFont(new Font("Sans", 0, 9));
-			FontMetrics fm = g2d.getFontMetrics();
-			g2d.setPaint(Color.GRAY);
-			g2d.drawString(String.format("%d x %d at %d, %d (%dx)", worldLength, worldLength, centerX, centerZ, resolution),
-					mapImage.getWidth() + legendMapSpacing, outputHeight - fm.getHeight() / 2 + statsLegendSpacing);
-		} finally
-		{
-			g2d.dispose();
-		}*/
-
-		// Paint legend
-		//paintLegend(outputImage, seenBiomes, mapImage.getWidth() + legendMapSpacing, 0);
-
-		/*try
-		{
-			ImageIO.write(outputImage, "png", outputFile);
-
-			sendStatus("Written to: " + outputFile.getAbsolutePath());
-		} catch (IOException e)
-		{
-			BiomeAtlas.logger.error("Failed to generate biome map", e);
-			sendStatus("Map generation failed because the file couldn't be written! More details can be found in the log.");
-		}*/
 	}
 
 	private void sendStatus(String message)
