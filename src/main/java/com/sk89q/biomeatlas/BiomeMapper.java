@@ -2,12 +2,10 @@ package com.sk89q.biomeatlas;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeProvider;
-import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.BiomeDictionary.Type;
@@ -18,12 +16,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jfree.graphics2d.svg.*;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.geom.Area;
-import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.List;
 
@@ -32,31 +27,16 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class BiomeMapper
 {
-	public static Logger logger = LogManager.getLogger("BiomeMapper");
+	private static Logger logger = LogManager.getLogger("BiomeMapper");
 
 	private final List<Predicate<String>> listeners = Lists.newArrayList();
-	private int lineHeight = 8;
-	private int statsLegendSpacing = lineHeight / 2;
-	private int legendMapSpacing = 5;
-	private int iconTextSpacing = 5;
-	private int legendLabelSpacing = 200;
 	private int messageRate = 5000;
 	private int resolution = 1;
 
-	public int getMessageRate()
-	{
-		return messageRate;
-	}
-
-	public void setMessageRate(int messageRate)
+	void setMessageRate(int messageRate)
 	{
 		checkArgument(messageRate >= 10, "messageRate >= 10");
 		this.messageRate = messageRate;
-	}
-
-	public int getResolution()
-	{
-		return resolution;
 	}
 
 	public void setResolution(int resolution)
@@ -119,9 +99,10 @@ public class BiomeMapper
 				"\t</head>\n" +
 				"\t<style>" +
 				"path:hover { fill-opacity: 0.7; stroke: black; stroke-opacity: 1.0; stroke-width: 1px; } " +
+				"svg { border:3px ridge black; box-shadow: 4px 4px 0px gray; } " +
 				"#map, #infobar { padding: 0; margin: 0; } " +
 				"#main { display:table; margin:auto; } " +
-				"#map  { display:table-cell; width:800px; background-color:#FFFFFF; } " +
+				"#map  { display:table-cell; width:900px; background-color:#FFFFFF; } " +
 				"#infobar { display:table-cell; vertical-align:top; padding-left: 10px; width:300px; background-color:#FFFFFF; } " +
 				"#infomap { border:3px ridge black; box-shadow: 4px 4px 0px gray; padding: 5px; margin-bottom: 10px; } " +
 				"#infobiome { border:3px ridge black; box-shadow: 4px 4px 0px gray; padding: 5px; } " +
@@ -146,15 +127,19 @@ public class BiomeMapper
 
 		try
 		{
-			/*ChunkProviderServer cps = FMLCommonHandler.instance().getMinecraftServerInstance().worldServerForDimension(0).getChunkProvider();
+			ChunkProviderServer cps = FMLCommonHandler.instance().getMinecraftServerInstance().worldServerForDimension(0).getChunkProvider();
 
-			long startTime = System.currentTimeMillis();
+			StringBuilder sbBiome = new StringBuilder();
 			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
 			{
+				int chunkX = blockX >> 4;
+				int x = (blockX - minBlockX) / resolution;
 				for (int blockZ = minBlockZ; blockZ < maxBlockZ; blockZ += resolution)
 				{
-					int chunkX = blockX >> 4;
 					int chunkZ = blockZ >> 4;
+					int y = (blockZ - minBlockZ) / resolution;
+					Rectangle rect = new Rectangle(x, y, 1, 1);
+
 					if(!cps.chunkExists(chunkX, chunkZ))
 					{
 						cps.loadChunk(chunkX, chunkZ);
@@ -162,66 +147,6 @@ public class BiomeMapper
 
 					BlockPos pos = new BlockPos(blockX, 50, blockZ);
 					Biome biome = chunkManager.getBiomeGenerator(pos);
-				}
-			}
-			sendStatus("getBiome: " + (System.currentTimeMillis() - startTime) + " ms");
-
-			startTime = System.currentTimeMillis();
-			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
-			{
-				for (int blockZ = minBlockZ; blockZ < maxBlockZ; blockZ += resolution)
-				{
-					Biome biome = chunkManager.getBiomesForGeneration(null, blockX, blockZ, 1, 1)[0];
-				}
-			}
-			sendStatus("getBiomesForGeneration: " + (System.currentTimeMillis() - startTime) + " ms");
-
-			startTime = System.currentTimeMillis();
-			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
-			{
-				for (int blockZ = minBlockZ; blockZ < maxBlockZ; blockZ += resolution)
-				{
-					Biome biome = chunkManager.getBiomeGenAt(null, blockX, blockZ, 1, 1, false)[0];
-				}
-			}
-			sendStatus("getBiomeGenAt: " + (System.currentTimeMillis() - startTime) + " ms");
-
-			startTime = System.currentTimeMillis();
-			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
-			{
-				for (int blockZ = minBlockZ; blockZ < maxBlockZ; blockZ += resolution)
-				{
-					Biome biome = world.getBiomeGenForCoords(new BlockPos(blockX, 50, blockZ));
-				}
-			}
-			sendStatus("getBiomeGenForCoords: " + (System.currentTimeMillis() - startTime) + " ms");
-
-			startTime = System.currentTimeMillis();
-			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
-			{
-				for (int blockZ = minBlockZ; blockZ < maxBlockZ; blockZ += resolution)
-				{
-					BlockPos pos = new BlockPos(blockX, 50, blockZ);
-					Biome biome = chunkManager.getBiomeGenerator(pos);
-				}
-			}
-			sendStatus("getBiome: " + (System.currentTimeMillis() - startTime) + " ms");*/
-
-
-
-			StringBuilder sbBiome = new StringBuilder();
-			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
-			{
-				for (int blockZ = minBlockZ; blockZ < maxBlockZ; blockZ += resolution)
-				{
-					Biome biome = chunkManager.getBiomesForGeneration(null, blockX, blockZ, 1, 1)[0];
-					//Biome biome = world.getBiomeGenForCoords(new BlockPos(blockX, 50, blockZ));
-					//BlockPos pos = new BlockPos(blockX, 50, blockZ);
-					//Biome biome = chunkManager.getBiomeGenerator(pos);
-
-					int x = (blockX - minBlockX) / resolution;
-					int y = (blockZ - minBlockZ) / resolution;
-					Rectangle rect = new Rectangle(x, y, 1, 1);
 
 					if(mapBiomes.containsKey(biome))
 					{
@@ -229,14 +154,6 @@ public class BiomeMapper
 					}
 					else
 					{
-						sbBiome.append("\t\t\t\t\t<span class=\"biometext\">|&nbsp;<a href=\"#\" onmouseover=\"highlightBiome('");
-						sbBiome.append(biome.getRegistryName().toString());
-						sbBiome.append("')\" onmouseout=\"highlightBiomeOff('");
-						sbBiome.append(biome.getRegistryName().toString());
-						sbBiome.append("')\">");
-						sbBiome.append(biome.getBiomeName());
-						sbBiome.append("</a>&nbsp;|</span>\n");
-
 						Area ar = new Area();
 						ar.add(new Area(rect));
 
@@ -258,6 +175,14 @@ public class BiomeMapper
 
 			for (Biome b : mapBiomes.keySet())
 			{
+				sbBiome.append("\t\t\t\t\t<span class=\"biometext\">|&nbsp;<a href=\"#\" onmouseover=\"highlightBiome('");
+				sbBiome.append(b.getRegistryName().toString());
+				sbBiome.append("')\" onmouseout=\"highlightBiomeOff('");
+				sbBiome.append(b.getRegistryName().toString());
+				sbBiome.append("')\">");
+				sbBiome.append(b.getBiomeName());
+				sbBiome.append("</a>&nbsp;|</span>\n");
+
 				//Area area = new Area();
 				g2.setPaint(new Color(getBiomeRGB(b)));
 				g2.setRenderingHint(SVGHints.KEY_ELEMENT_ID, b.getRegistryName().toString());
@@ -278,7 +203,6 @@ public class BiomeMapper
 		{
 			logger.error(ex);
 			sendStatus("Error: " + ex.getMessage());
-			return;
 		}
 		finally
 		{
@@ -297,45 +221,12 @@ public class BiomeMapper
 		}
 	}
 
-	private void paintLegend(BufferedImage image, Set<Biome> biomes, int baseX, int baseY)
-	{
-		List<Biome> sortedBiomes = Lists.newArrayList(biomes);
-		Collections.sort(sortedBiomes, new BiomeColorComparator());
-
-		Graphics2D g2d = (Graphics2D) image.getGraphics();
-
-		try
-		{
-			g2d.setFont(new Font("Sans", 0, 9));
-			FontMetrics fm = g2d.getFontMetrics();
-
-			int i = 0;
-			for (Biome biome : sortedBiomes)
-			{
-				int y = lineHeight * i;
-				g2d.setColor(new Color(getBiomeRGB(biome)));
-				g2d.fill(new Rectangle(baseX, baseY + y, lineHeight, lineHeight));
-
-				g2d.setPaint(Color.BLACK);
-				g2d.drawString(biome.getBiomeName(), baseX + lineHeight + iconTextSpacing, baseY + y + fm.getHeight() / 2 + 1);
-
-				i++;
-			}
-		} finally
-		{
-			g2d.dispose();
-		}
-	}
-
 	private static int getBiomeRGB(Biome biome)
 	{
 		Biome.TempCategory tempCat = biome.getTempCategory();
 
 		List<Type> biomeTypes = Lists.newArrayList();
-		for (final Type type : BiomeDictionary.getTypesForBiome(biome))
-		{
-			biomeTypes.add(type);
-		}
+		Collections.addAll(biomeTypes, BiomeDictionary.getTypesForBiome(biome));
 
 		if (biome.getBiomeName().equals("Deep Ocean"))
 		{
@@ -458,182 +349,7 @@ public class BiomeMapper
 		}
 	}
 
-	private static class BiomeColorComparator implements Comparator<Biome>
-	{
-		@Override
-		public int compare(Biome biome1, Biome biome2)
-		{
-			Color c1 = new Color(getBiomeRGB(biome1));
-			Color c2 = new Color(getBiomeRGB(biome2));
-			float[] hsv1 = new float[3];
-			float[] hsv2 = new float[3];
-			Color.RGBtoHSB(c1.getRed(), c1.getGreen(), c1.getBlue(), hsv1);
-			Color.RGBtoHSB(c2.getRed(), c2.getGreen(), c2.getBlue(), hsv2);
-			if (hsv1[0] < hsv2[0])
-			{
-				return -1;
-			} else if (hsv1[0] > hsv2[0])
-			{
-				return 1;
-			} else
-			{
-				if (hsv1[1] < hsv2[1])
-				{
-					return -1;
-				} else if (hsv1[1] > hsv2[1])
-				{
-					return 1;
-				} else
-				{
-					return 0;
-				}
-			}
-
-            /*if(biome1.getBiomeName().equals("Deep Ocean")
-                    || biome1.getBiomeName().equals("Ocean")
-                    || biome1.getBiomeName().equals("FrozenOcean")
-                    || biome1.getBiomeName().equals("FrozenOcean")
-                    || (biome1.size() <= 2 && biome1.contains(Type.OCEAN)))
-            {
-                return 0x00177F; // HSV(229, 100, 50)
-            }
-
-            else if(biome.getBiomeName().equals("Ocean"))
-            {
-                return 0x002EFF; // HSV(229, 100, 100)
-            }
-            else if(biome.getBiomeName().equals("FrozenOcean"))
-            {
-                return 0xB7D0FF; // HSV(229, 100, 50)
-            }
-            else if(biomeTypes.size() <= 2 && biomeTypes.contains(Type.OCEAN))
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = 207;
-                int sat = (hash % 29) + 71;
-                int lum = (hash % 17) + 83;
-                //217 -> 247
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(biomeTypes.contains(Type.MUSHROOM))
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = (hash % 20) + 340;
-                int sat = (hash % 15) + 85;
-                int lum = (hash % 10) + 90;
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(biomeTypes.contains(Type.MAGICAL))
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = (hash % 20) + 300;
-                int sat = (hash % 20) + 80;
-                int lum = (hash % 20) + 80;
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(biomeTypes.contains(Type.DEAD))
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = (hash % 30) + 10;
-                int sat = (hash % 50) + 50;
-                int lum = (hash % 10) + 30;
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(biomeTypes.contains(Type.SPOOKY))
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = hash % 360;
-                int sat = (hash % 30);
-                int lum = (hash % 20);
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(biomeTypes.contains(Type.SNOWY))
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = hash % 360;
-                int sat = hash % 10;
-                int lum = (hash % 20) + 80;
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(biomeTypes.contains(Type.MOUNTAIN))
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = hash % 360;
-                int sat = 0;
-                int lum = (hash % 40) + 30;
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(biomeTypes.contains(Type.SWAMP))
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = (hash % 15) + 255;
-                int sat = (hash % 40) + 60;
-                int lum = (hash % 20) + 40;
-                //217 -> 247
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(biomeTypes.contains(Type.JUNGLE))
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = (hash % 40) + 110;
-                int sat = 100;
-                int lum = (hash % 20) + 30;
-                //217 -> 247
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(biomeTypes.contains(Type.MESA))
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = 24;
-                int sat = (hash % 20) + 80;
-                int lum = (hash % 30) + 70;
-                //217 -> 247
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(biomeTypes.contains(Type.SAVANNA))
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = (hash % 20) + 60;
-                int sat = (hash % 50) + 50;
-                int lum = (hash % 40) + 30;
-                //217 -> 247
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(biomeTypes.contains(Type.BEACH))
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = (hash % 10) + 50;
-                int sat = (hash % 30) + 70;
-                int lum = (hash % 10) + 90;
-                //217 -> 247
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(tempCat == Biome.TempCategory.WARM)
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = (hash % 5) + 55;
-                int sat = (hash % 7) + 93;
-                int lum = (hash % 10) + 90;
-                //217 -> 247
-                return HSVtoRGB(hue, sat, lum);
-            }
-            else if(tempCat == Biome.TempCategory.COLD)
-            {
-                return 0x0000FF;
-            }
-            else
-            {
-                int hash = Math.abs(biome.getBiomeName().hashCode());
-                int hue = (hash % 70) + 90;
-                int sat = (hash % 20) + 80;
-                int lum = (hash % 30) + 70;
-                //217 -> 247
-                return HSVtoRGB(hue, sat, lum);
-            }*/
-		}
-	}
-
-	public static int HSVtoRGB(int hue, int sat, int lum)
+	private static int HSVtoRGB(int hue, int sat, int lum)
 	{
 		// H is given on [0->6] or -1. S and V are given on [0->1].
 		// RGB are each returned on [0->1].
