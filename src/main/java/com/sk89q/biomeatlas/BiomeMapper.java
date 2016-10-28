@@ -6,6 +6,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeProvider;
+import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.BiomeDictionary.Type;
@@ -54,8 +55,6 @@ public class BiomeMapper
 	{
 		checkNotNull(outputFile, "outputFile");
 
-		BiomeProvider chunkManager = world.getBiomeProvider();
-
 		int minBlockX = centerX - apothem;
 		int minBlockZ = centerZ - apothem;
 		int maxBlockX = centerX + apothem;
@@ -63,7 +62,6 @@ public class BiomeMapper
 		int worldLength = apothem * 2;
 		int mapImageLength = (int) Math.ceil(worldLength / (double) resolution);
 
-		//BufferedImage mapImage = new BufferedImage(mapImageLength, mapImageLength, BufferedImage.TYPE_INT_RGB);
 		SVGGraphics2D g2 = new SVGGraphics2D(mapImageLength, mapImageLength);
 
 		Map<Biome, Area> mapBiomes = new TreeMap<Biome, Area>(new Comparator<Biome>()
@@ -129,7 +127,6 @@ public class BiomeMapper
 		{
 			ChunkProviderServer cps = FMLCommonHandler.instance().getMinecraftServerInstance().worldServerForDimension(0).getChunkProvider();
 
-			StringBuilder sbBiome = new StringBuilder();
 			for (int blockX = minBlockX; blockX < maxBlockX; blockX += resolution)
 			{
 				int chunkX = blockX >> 4;
@@ -145,8 +142,7 @@ public class BiomeMapper
 						cps.loadChunk(chunkX, chunkZ);
 					}
 
-					BlockPos pos = new BlockPos(blockX, 50, blockZ);
-					Biome biome = chunkManager.getBiomeGenerator(pos);
+					Biome biome = world.getBiomeGenForCoords(new BlockPos(blockX, 50, blockZ));
 
 					if(mapBiomes.containsKey(biome))
 					{
@@ -171,8 +167,10 @@ public class BiomeMapper
 				}
 			}
 
-			sendStatus("Creating output image...");
+			sendStatus("Creating output file...");
 
+			long startTimer = System.currentTimeMillis();
+			StringBuilder sbBiome = new StringBuilder();
 			for (Biome b : mapBiomes.keySet())
 			{
 				sbBiome.append("\t\t\t\t\t<span class=\"biometext\">|&nbsp;<a href=\"#\" onmouseover=\"highlightBiome('");
@@ -199,6 +197,7 @@ public class BiomeMapper
 			sb.append(footer);
 
 			FileUtils.writeStringToFile(outputFile, sb.toString());
+			sendStatus("Done in " + (System.currentTimeMillis() - startTimer) + " ms");
 		} catch (Exception ex)
 		{
 			logger.error(ex);
