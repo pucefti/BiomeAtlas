@@ -2,6 +2,7 @@ package com.sk89q.biomeatlas;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
+import com.sk89q.biomeatlas.config.BiomeColorConfig;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
@@ -10,6 +11,7 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.BiomeDictionary.Type;
+import net.minecraftforge.event.terraingen.BiomeEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -226,6 +228,11 @@ public class BiomeMapper
 
 		List<Type> biomeTypes = Lists.newArrayList();
 		Collections.addAll(biomeTypes, BiomeDictionary.getTypesForBiome(biome));
+
+		if(BiomeColorConfig.biomeColorMap.containsKey(biome.getBiomeName().toLowerCase()))
+		{
+			return BiomeColorConfig.biomeColorMap.get(biome.getBiomeName().toLowerCase());
+		}
 
 		if (biome.getBiomeName().equals("Deep Ocean"))
 		{
