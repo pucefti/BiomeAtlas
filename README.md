@@ -1,6 +1,7 @@
 # BiomeAtlas
 
 A Forge mod for 1.10.2 that generates a map of biomes via command or on startup.
+To easily find the perfect spot the map is interactive. Same biome type is highlighted when overring it.
 
 * Supports mod-added biomes.
 * Great for finding that perfect seed.
@@ -63,7 +64,7 @@ for /l %%x in (1, 1, 50) do (
 pause
 ```
 
-You should find a bunch of **biomeatlas_<seed>.png** files in the same directory.
+You should find a bunch of **biomeatlas_<seed>.html** files in the same directory.
 
 ## License
 

@@ -1,6 +1,7 @@
 package com.sk89q.biomeatlas.command;
 
 import com.google.common.base.Predicate;
+import com.sk89q.biomeatlas.BiomeAtlas;
 import com.sk89q.biomeatlas.BiomeMapper;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
@@ -46,9 +47,10 @@ public class CommandBiomeAtlas extends CommandBase {
     {
         if (args.length >= 1 && args.length <= 2)
         {
+            //BiomeAtlas.serverInstance = server;
             EntityPlayerMP player = getCommandSenderAsPlayer(sender);
             int apothem;
-            int resolution = 1;
+            int resolution = 16;
 
             try
             {
@@ -78,14 +80,17 @@ public class CommandBiomeAtlas extends CommandBase {
                 }
             }
 
-            World world = player.getEntityWorld();
+            //World world = player.getEntityWorld();
             int centerX = (int) player.posX;
             int centerZ = (int) player.posZ;
 
-            BiomeMapper mapper = new BiomeMapper();
-            mapper.setResolution(resolution);
-            mapper.getListeners().add(new BroadcastObserver(server));
-            mapper.generate(world, centerX, centerZ, apothem, new File("biomeatlas_" + world.getSeed() + ".png"));
+            BiomeAtlas.instance.getMapper().setData(BiomeAtlas.getServerInstance().worldServerForDimension(player.dimension), centerX, centerZ, apothem, resolution);
+            BiomeAtlas.instance.getMapper().startGeneration();
+
+           // mapper.setResolution(resolution);
+            //mapper.setMessageRate(1000);
+            //mapper.getListeners().add(new BroadcastObserver(server));
+            //mapper.generate(world, sender, centerX, centerZ, apothem, 1000);
         }
         else
         {
@@ -99,7 +104,7 @@ public class CommandBiomeAtlas extends CommandBase {
         return null;
     }
 
-    private static class BroadcastObserver implements Predicate<String>
+    /*private static class BroadcastObserver implements Predicate<String>
     {
         private MinecraftServer _server = null;
 
@@ -112,9 +117,16 @@ public class CommandBiomeAtlas extends CommandBase {
         public boolean apply(String input)
         {
             TextComponentString message = new TextComponentString(input);
-            message.getStyle().setColor(TextFormatting.YELLOW);
+            message.getStyle().setColor(TextFormatting.DARK_GRAY);
             _server.addChatMessage(message);
+            BiomeAtlas.logger.info(message);
+
+            for (EntityPlayerMP player : _server.getPlayerList().getPlayerList())
+            {
+                player.addChatMessage(message);
+            }
+
             return false;
         }
-    }
+    }*/
 }
