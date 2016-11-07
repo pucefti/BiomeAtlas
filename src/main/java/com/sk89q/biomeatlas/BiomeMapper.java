@@ -30,6 +30,7 @@ public class BiomeMapper
 
 	private boolean _startGeneration;
 	private boolean _pendingGeneration;
+	private boolean _exitOnCompletion;
 
 	private int _resolution;
 	private int _minBlockX;
@@ -41,7 +42,6 @@ public class BiomeMapper
 
 	private int _mapImageLength;
 	private int _totalBlocks;
-	private int _totalCompletedBlocks;
 
 	private Map<Biome, Area> _mapBiomes;
 
@@ -95,13 +95,13 @@ public class BiomeMapper
 		_totalBlocks = _mapImageLength * _mapImageLength;
 	}
 
-	public void startGeneration()
+	public void startGeneration(boolean exitOnCompletion)
 	{
-		_totalCompletedBlocks = 0;
 		_currentBlockX = _minBlockX;
 		_currentBlockZ = _minBlockZ;
 		_mapBiomes.clear();
 
+		_exitOnCompletion = exitOnCompletion;
 		_startGeneration = true;
 	}
 
@@ -110,14 +110,9 @@ public class BiomeMapper
 		_startGeneration = false;
 	}
 
-	public String getProgress()
+	public int getTotalBlock()
 	{
-		return String.format("%d/%d", _totalCompletedBlocks, _totalBlocks);
-	}
-
-	public String getProgressInPercent()
-	{
-		return String.format("%.2f%%", (_totalCompletedBlocks / (double) _totalBlocks * 100));
+		return _totalBlocks;
 	}
 
 	public boolean isPendingGenerationExist()
@@ -135,7 +130,12 @@ public class BiomeMapper
 		return ((_currentBlockX + _resolution) >= _maxBlockX) && (_currentBlockZ >= _maxBlockZ);
 	}
 
-	public void analyzeRegion(int maxAnalyzedBlocks)
+	public boolean stopOnCompletion()
+	{
+		return _exitOnCompletion;
+	}
+
+	public int analyzeRegion(int maxAnalyzedBlocks)
 	{
 		_pendingGeneration = true;
 		try
@@ -173,12 +173,11 @@ public class BiomeMapper
 					}
 
 					completedBlocks++;
-					_totalCompletedBlocks++;
 
 					if (completedBlocks >= maxAnalyzedBlocks)
 					{
 						_cps.unloadAllChunks();
-						return;
+						return completedBlocks;
 					}
 				}
 
@@ -189,6 +188,8 @@ public class BiomeMapper
 					_currentBlockZ = _minBlockZ;
 				}
 			}
+
+			return completedBlocks;
 		}
 		finally
 		{
@@ -205,17 +206,20 @@ public class BiomeMapper
 			String header = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n" +
 					"<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"fr\" lang=\"fr\">\n" +
 					"\t<head>\n" +
-					"\t<title>" + _worldServer.getSeed() + "</title>\n" +
+					"\t<title>Seed: " + _worldServer.getSeed() + "</title>\n" +
 					"\t</head>\n" +
 					"\t<style>" +
+					"html,body { height: 100%; margin: 0px; padding: 0px; } " +
 					"path:hover { fill-opacity: 0.7; stroke: black; stroke-opacity: 1.0; stroke-width: 1px; } " +
-					"svg { border:3px ridge black; box-shadow: 4px 4px 0px gray; } " +
-					"#map, #infobar { padding: 0; margin: 0; } " +
-					"#main { display:table; margin:auto; } " +
-					"#map  { display:table-cell; width:900px; background-color:#FFFFFF; } " +
+					"#main { display:table; margin:auto; padding:7px; height: 100%; } " +
+					"#map, #infobar { padding: 0; margin: 0; height: 100%; } " +
+					"#map  { display:table-cell; background-color:#FFFFFF; }" +
+					"svg { border:3px ridge black; box-shadow: 4px 4px 0px gray; height: 100%; } " +
 					"#infobar { display:table-cell; vertical-align:top; padding-left: 10px; width:300px; background-color:#FFFFFF; } " +
 					"#infomap { border:3px ridge black; box-shadow: 4px 4px 0px gray; padding: 5px; margin-bottom: 10px; } " +
 					"#infobiome { border:3px ridge black; box-shadow: 4px 4px 0px gray; padding: 5px; } " +
+					".biomename { padding: 2px 7px 2px 0; margin: 0; white-space: nowrap; } " +
+					".biomecolor { padding: 2px 7px 2px 0; margin: 0; width:17px; } " +
 					".biometext { padding: 2px 7px 2px 0; margin: 0; white-space: nowrap; } a { text-decoration: none; color: #000000; } a:hover { color: #FF0000; }" +
 					"</style>\n" +
 					"\t<script>" +
@@ -227,25 +231,53 @@ public class BiomeMapper
 					"</script>\n" +
 					"\t<body>\n\t\t<div id=\"main\">\n\t\t\t<div id=\"map\">";
 
-			String biomeList = "</div>\n\t\t\t<div id=\"infobar\">\n\t\t\t\t<div id=\"infomap\">Biome: <span id='biome_name'>&nbsp;</span><br/>Coordonn&eacute;e: <span id='biome_coord'>&nbsp;</span></div>\n\t\t\t\t<div id=\"infobiome\">\n";
+			String biomeList = "</div>\n\t\t\t<div id=\"infobar\">\n\t\t\t\t<div id=\"infomap\">Biome: <span id='biome_name'>&nbsp;</span><br/>Coordonn&eacute;e: <span id='biome_coord'>&nbsp;</span></div>\n\t\t\t\t<div id=\"infobiome\"><table>\n";
 
-			String footer = "\t\t\t\t</div>\n\t\t\t</div>\n\t\t</div>\n\t\t<script>var svg  = document.getElementById(\"biomeatlas\"); var pt   = svg.createSVGPoint(); " +
+			String footer = "\t\t\t\t</table></div>\n\t\t\t</div>\n\t\t</div>\n\t\t<script>var svg  = document.getElementById(\"biomeatlas\"); var map = document.getElementById(\"map\"); map.style.width = map.clientHeight + \"px\"; var pt   = svg.createSVGPoint(); " +
 					"svg.addEventListener('mousemove',function(evt){ var loc = cursorPoint(evt); document.getElementById('biome_coord').innerHTML = \"x: \"+ ((Math.ceil(loc.x) * " + _resolution + ") + (" + _minBlockX + ")) + \" y:\" + ((Math.ceil(loc.y) * " + _resolution + ") + (" + _minBlockZ + ")); },false);" +
 					"</script>\t\n</body>\n</html>\n";
 
+			boolean newLigne = true;
 			StringBuilder sbBiome = new StringBuilder();
 			for (Biome b : _mapBiomes.keySet())
 			{
-				sbBiome.append("\t\t\t\t\t<span class=\"biometext\">|&nbsp;<a href=\"#\" onmouseover=\"highlightBiome('");
+				if(newLigne)
+				{
+					sbBiome.append("\t\t\t\t<tr>\n");
+				}
+
+				Color colorBiome = new Color(getBiomeRGB(b));
+				String rgb = Integer.toHexString(colorBiome.getRGB());
+
+				sbBiome.append("\t\t\t\t\t<td class=\"biomecolor\" bgcolor=\"#").append(rgb.substring(2, rgb.length())).append("\"></td>");
+				sbBiome.append("<td class=\"biomename\"><a href=\"#\" onmouseover=\"highlightBiome('");
 				sbBiome.append(b.getRegistryName().toString());
 				sbBiome.append("')\" onmouseout=\"highlightBiomeOff('");
 				sbBiome.append(b.getRegistryName().toString());
 				sbBiome.append("')\">");
 				sbBiome.append(b.getBiomeName());
-				sbBiome.append("</a>&nbsp;|</span>\n");
+				sbBiome.append("</a></td>\n");
+
+				if(newLigne)
+				{
+					newLigne = false;
+				}
+				else
+				{
+					sbBiome.append("\t\t\t\t</tr>\n");
+					newLigne = true;
+				}
+
+				/*sbBiome.append("\t\t\t\t\t<span class=\"biometext\">|&nbsp;<a href=\"#\" onmouseover=\"highlightBiome('");
+				sbBiome.append(b.getRegistryName().toString());
+				sbBiome.append("')\" onmouseout=\"highlightBiomeOff('");
+				sbBiome.append(b.getRegistryName().toString());
+				sbBiome.append("')\">");
+				sbBiome.append(b.getBiomeName());
+				sbBiome.append("</a>&nbsp;|</span>\n");*/
 
 				//Area area = new Area();
-				g2.setPaint(new Color(getBiomeRGB(b)));
+				g2.setPaint(colorBiome);
 				g2.setRenderingHint(SVGHints.KEY_ELEMENT_ID, b.getRegistryName().toString());
 				g2.setRenderingHint(SVGHints.KEY_ELEMENT_CUSTOM, "onmouseover=\"displayName('" + StringEscapeUtils.escapeHtml3(b.getBiomeName()) + "')\"");
 				g2.fill(_mapBiomes.get(b));

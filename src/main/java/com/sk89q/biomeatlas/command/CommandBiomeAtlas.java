@@ -85,7 +85,7 @@ public class CommandBiomeAtlas extends CommandBase {
             int centerZ = (int) player.posZ;
 
             BiomeAtlas.instance.getMapper().setData(BiomeAtlas.getServerInstance().worldServerForDimension(player.dimension), centerX, centerZ, apothem, resolution);
-            BiomeAtlas.instance.getMapper().startGeneration();
+            BiomeAtlas.instance.getMapper().startGeneration(false);
 
            // mapper.setResolution(resolution);
             //mapper.setMessageRate(1000);

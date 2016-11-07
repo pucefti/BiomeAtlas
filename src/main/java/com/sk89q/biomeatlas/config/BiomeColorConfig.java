@@ -1,11 +1,7 @@
 package com.sk89q.biomeatlas.config;
 
 import com.sk89q.biomeatlas.BiomeAtlas;
-import net.minecraftforge.common.config.ConfigCategory;
 import net.minecraftforge.common.config.Configuration;
-import net.minecraftforge.common.config.Property;
-import net.minecraftforge.fml.client.event.ConfigChangedEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import java.awt.*;
 import java.io.File;
@@ -14,12 +10,13 @@ import java.util.Map;
 
 /**
  * Created by Ben on 28/10/2016.
+ * Color config
  */
 public class BiomeColorConfig
 {
-	public static Configuration config;
 	public static Map<String, Integer> biomeColorMap;
-	public static Map<String, Color> biomeDefaultColorMap;
+	private static Configuration config;
+	private static Map<String, Color> biomeDefaultColorMap;
 
 	public static void init(File configFile)
 	{
@@ -33,7 +30,7 @@ public class BiomeColorConfig
 		}
 	}
 
-	private static void loadConfiguration()
+	static void loadConfiguration()
 	{
 		try
 		{
@@ -252,14 +249,5 @@ public class BiomeColorConfig
 
 		//BetterAgriculture
 		biomeDefaultColorMap.put("FarmlandBiome", new Color(0x00d300));
-	}
-
-	@SubscribeEvent
-	public void onConfigurationChangedEvent(ConfigChangedEvent.OnConfigChangedEvent event)
-	{
-		if (event.getModID().equalsIgnoreCase(BiomeAtlas.MOD_ID))
-		{
-			loadConfiguration();
-		}
 	}
 }

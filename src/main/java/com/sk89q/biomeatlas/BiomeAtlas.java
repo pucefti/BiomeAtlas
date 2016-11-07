@@ -2,12 +2,12 @@ package com.sk89q.biomeatlas;
 
 import com.sk89q.biomeatlas.command.CommandBiomeAtlas;
 import com.sk89q.biomeatlas.config.BiomeColorConfig;
+import com.sk89q.biomeatlas.config.BiomeMainConfig;
 import com.sk89q.biomeatlas.handler.ServerTickHandler;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.util.text.TextFormatting;
-import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.Mod;
@@ -53,9 +53,10 @@ public class BiomeAtlas
 		_configDirectory = new File(event.getModConfigurationDirectory(), "biomeatlas");
 
 		Locale.setDefault(Locale.ENGLISH);
+		BiomeMainConfig.init(new File(_configDirectory, "biome.cfg"));
 		BiomeColorConfig.init(new File(_configDirectory, "biomecolor.cfg"));
 
-		MinecraftForge.EVENT_BUS.register(new BiomeColorConfig());
+		MinecraftForge.EVENT_BUS.register(new BiomeMainConfig());
 		MinecraftForge.EVENT_BUS.register(new ServerTickHandler());
 	}
 
@@ -77,27 +78,7 @@ public class BiomeAtlas
 
 		if (System.getProperty("biomeAtlas.mapOnStartup", "false").equals("true"))
 		{
-			_mapper.startGeneration();
-			/*int apothem = Integer.parseInt(System.getProperty("biomeAtlas.apothem", "250"));
-			int dimension = Integer.parseInt(System.getProperty("biomeAtlas.mapDimension", "0"));
-			int centerX = Integer.parseInt(System.getProperty("biomeAtlas.centerX", "0"));
-			int centerZ = Integer.parseInt(System.getProperty("biomeAtlas.centerZ", "0"));
-			int resolution = Integer.parseInt(System.getProperty("biomeAtlas.resolution", "16"));*/
-
-			//if (apothem > 0 && resolution >= 1)
-			{
-
-				//mapper.setResolution(resolution);
-				//mapper.setMessageRate(5000);
-				//mapper.getListeners().add(new LoggerObserver());
-				//mapper.generate(getServerInstance().worldServerForDimension(dimension), centerX, centerZ, apothem, resolution);
-
-				/*if (System.getProperty("biomeAtlas.exitOnFinish", "false").equals("true"))
-				{
-					logger.info("BiomeAtlas finished generating! Now exiting Java as enabled.");
-					FMLCommonHandler.instance().exitJava(0, false);
-				}*/
-			}
+			_mapper.startGeneration(System.getProperty("biomeAtlas.exitOnFinish", "false").equals("true"));
 		}
 	}
 
@@ -108,20 +89,12 @@ public class BiomeAtlas
 		getServerInstance().addChatMessage(message);
 		logger.info(message);
 
-		for (EntityPlayerMP player : getServerInstance().getPlayerList().getPlayerList())
+		if(BiomeMainConfig.BroadcastPlayers)
 		{
-			player.addChatMessage(message);
+			for (EntityPlayerMP player : getServerInstance().getPlayerList().getPlayerList())
+			{
+				player.addChatMessage(message);
+			}
 		}
 	}
-
-	/*private static class LoggerObserver implements Predicate<String>
-	{
-		@Override
-		public boolean apply(String input)
-		{
-			logger.info(input);
-			return false;
-		}
-	}*/
-
 }
